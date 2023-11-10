@@ -98,31 +98,37 @@ class BetterTable extends Module {
           node.getAttribute('data-row')
       })[0]
 
+      if (!tableNode || !rowNode || !cellNode) {
+        return;
+      }
+
       let isTargetCellSelected = this.tableSelection.selectedTds
         .map(tableCell => tableCell.domNode)
         .includes(cellNode)
 
       if (this.tableSelection.selectedTds.length <= 0 ||
         !isTargetCellSelected) {
-        this.tableSelection.setSelection(
-          cellNode.getBoundingClientRect(),
-          cellNode.getBoundingClientRect()
-        )
-      }
+        	if (cellNode !== undefined) {
+            this.tableSelection.setSelection(
+                cellNode.getBoundingClientRect(),
+                cellNode.getBoundingClientRect()
+            )
+        	}
+        }
 
-      if (this.tableOperationMenu)
-        this.tableOperationMenu = this.tableOperationMenu.destroy()
+        if (this.tableOperationMenu)
+          this.tableOperationMenu = this.tableOperationMenu.destroy()
 
-      if (tableNode) {
-        this.tableOperationMenu = new TableOperationMenu({
-          table: tableNode,
-          row: rowNode,
-          cell: cellNode,
-          left: evt.pageX,
-          top: evt.pageY
-        }, quill, options.operationMenu)
-      }
-    }, false)
+        if (tableNode) {
+          this.tableOperationMenu = new TableOperationMenu({
+            table: tableNode,
+            row: rowNode,
+            cell: cellNode,
+            left: evt.pageX,
+            top: evt.pageY
+          }, quill, options.operationMenu)
+        }
+      }, false)
 
     // add keyboard binding：Backspace
     // prevent user hits backspace to delete table cell

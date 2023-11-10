@@ -260,6 +260,7 @@ export default class TableOperationMenu {
     this.quill = quill
     this.options = options
     this.menuItems = Object.assign({}, MENU_ITEMS_DEFAULT, options.items)
+    this.width = (options.width === undefined) ? '${MENU_WIDTH}px' : options.width;
     this.tableColumnTool = betterTableModule.columnTool
     this.boundary = this.tableSelection.boundary
     this.selectedTds = this.tableSelection.selectedTds
@@ -291,7 +292,7 @@ export default class TableOperationMenu {
       left: `${left}px`,
       top: `${top}px`,
       'min-height': `${MENU_MIN_HEIHGT}px`,
-      width: `${MENU_WIDTH}px`
+      width: `${this.width}px`
     })
 
     for (let name in this.menuItems) {

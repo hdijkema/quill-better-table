@@ -7,7 +7,7 @@ module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production'
   let entry, minimize
 
-  if (env && env.minimize) {
+  if (env && env.includes('minimize')) {
     entry = {
       'quill-better-table.min.js': ['./src/quill-better-table.js']
     }
