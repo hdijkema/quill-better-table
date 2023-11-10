@@ -179,6 +179,44 @@ class BetterTable extends Module {
     return [table, row, cell, offset];
   }
 
+  isTable(range = this.quill.getSelection()) {
+    if (range === null) { return false; }
+    
+    // Do we have the table itself selected?
+    // If so, there may be not any text selected. 
+
+    var retval = { tableSelected: false, tableCells: 0, otherBlots: 0 };
+    if (this.tableSelection) {
+      retval.tableSelected = true;
+      retval.tableCells = -1;
+      retval.otherBlots = -1;
+      return retval;
+    }
+
+    // Next check if we have some table cell in the
+    // selected text. 
+    var blots;
+    if (range.length === 0) {
+      blots = [ this.quill.getLine(range.index)[0] ];
+    } else {
+      blots = this.quill.getLines(range.index, range.length);
+    }
+
+    var i, N;
+    for(i = 0, N = blots.length; i < N; i++) {
+      var blot = blots[i];
+      if (blot !== null) {
+        if (blot.statics.blotName === TableCellLine.blotName) {
+          retval.tableCells++;
+        } else {
+          retval.otherBlots++;
+        }
+      }
+    }
+
+    return retval;
+  }
+
   insertTable(rows, columns) {
     const range = this.quill.getSelection(true)
     if (range == null) return

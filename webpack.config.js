@@ -7,7 +7,7 @@ module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production'
   let entry, minimize
 
-  if (env && env.includes('minimize')) {
+  if (env && env.minimize) {
     entry = {
       'quill-better-table.min.js': ['./src/quill-better-table.js']
     }
@@ -82,7 +82,8 @@ module.exports = (env, argv) => {
           test: /\.scss$/,
           use: [
             // fallback to style-loader in development
-            !isProduction ? 'style-loader' : MiniCssExtractPlugin.loader,
+            //!isProduction ? 'style-loader' : MiniCssExtractPlugin.loader,
+            MiniCssExtractPlugin.loader,
             'css-loader',
             'sass-loader'
           ]

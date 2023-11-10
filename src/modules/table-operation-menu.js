@@ -275,7 +275,26 @@ export default class TableOperationMenu {
   }
 
   mount () {
-    document.body.appendChild(this.domNode)
+    document.body.appendChild(this.domNode);
+    var width = this.domNode.offsetWidth;
+    var height = this.domNode.offsetHeight;
+    var window_width = window.innerWidth;
+    var window_height = window.innerHeight;
+    var x = this.domNode.offsetLeft;
+    var y = this.domNode.offsetTop; 
+    var move = false;
+    if (x > (window_width - width)) { 
+      move = true;
+      x = window_width - width;
+    }
+    if (y > (window_height - height)) {
+      move = true;
+      y = window_height - height;
+    }
+    if (move) {
+      this.domNode.style.left = x + 'px';
+      this.domNode.style.top = y + 'px';
+    }
   }
 
   destroy () {
@@ -297,16 +316,22 @@ export default class TableOperationMenu {
 
     for (let name in this.menuItems) {
       if (this.menuItems[name]) {
-        this.domNode.appendChild(
-          this.menuItemCreator(
-            Object.assign({}, MENU_ITEMS_DEFAULT[name], this.menuItems[name])
-          )
-        )
-
-        if (['insertRowDown', 'unmergeCells'].indexOf(name) > -1) {
+        if (name.match(/sep_[0-9]+/)) {
           this.domNode.appendChild(
             dividingCreator()
           )
+        } else {
+          this.domNode.appendChild(
+            this.menuItemCreator(
+              Object.assign({}, MENU_ITEMS_DEFAULT[name], this.menuItems[name])
+            )
+          )
+
+          if (['insertRowDown', 'unmergeCells'].indexOf(name) > -1) {
+            this.domNode.appendChild(
+              dividingCreator()
+            )
+          }
         }
       }
     }
@@ -324,8 +349,9 @@ export default class TableOperationMenu {
 
     // create dividing line
     function dividingCreator () {
-      const dividing = document.createElement('div')
-      dividing.classList.add('qlbt-operation-menu-dividing')
+      //const dividing = document.createElement('div')
+      //dividing.classList.add('qlbt-operation-menu-dividing')
+      const dividing = document.createElement('hr');
       return dividing
     }
 
