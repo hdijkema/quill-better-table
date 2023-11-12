@@ -270,8 +270,67 @@ export default class TableOperationMenu {
     this.cellColors = options.color && options.color.colors ? options.color.colors : DEFAULT_CELL_COLORS
 
     this.menuInitial(params)
-    this.mount()
-    document.addEventListener("click", this.destroyHandler, false)
+
+    var display = false;
+    if (options.display) { display = options.display; }
+    if (display) {
+      this.mount();
+      document.addEventListener("click", this.destroyHandler, false)
+    }
+  }
+
+  insertColumnLeft() {
+    this.menuItems.insertColumnLeft.handler.bind(this)();
+    this.destroy();
+  }
+
+  insertColumnRight() {
+    this.menuItems.insertColumnRight.handler.bind(this)();
+    this.destroy();
+  }
+
+  insertRowUp() {
+    this.menuItems.insertRowUp.handler.bind(this)();
+    this.destroy();
+  }
+
+  insertRowDown() {
+    this.menuItems.insertRowDown.handler.bind(this)();
+    this.destroy();
+  }
+
+  mergeCells() {
+    this.menuItems.mergeCells.handler.bind(this)();
+    this.destroy();
+  }
+
+  unmergeCells() {
+    this.menuItems.unmergeCells.handler.bind(this)();
+    this.destroy();
+  }
+
+  deleteColumn() {
+    this.menuItems.deleteColumn.handler.bind(this)();
+    this.destroy();
+  }
+
+  deleteRow() {
+    this.menuItems.deleteRow.handler.bind(this)();
+    this.destroy();
+  }
+
+  deleteTable() {
+    this.menuItems.deleteTable.handler.bind(this)();
+    this.destroy();
+  }
+
+  setBgColor(color) {
+      const selectedTds = this.tableSelection.selectedTds
+      if (selectedTds && selectedTds.length > 0) {
+        selectedTds.forEach(tableCell => {
+          tableCell.format('cell-bg', color)
+        })
+      }
   }
 
   mount () {
@@ -301,6 +360,10 @@ export default class TableOperationMenu {
     this.domNode.remove()
     document.removeEventListener("click", this.destroyHandler, false)
     return null
+  }
+
+  static getDefaultMenuItems() {
+    return MENU_ITEMS_DEFAULT;
   }
 
   menuInitial ({ table, left, top }) {

@@ -2,6 +2,7 @@ import Quill from 'quill'
 import TableColumnTool from './modules/table-column-tool'
 import TableSelection from './modules/table-selection'
 import TableOperationMenu from './modules/table-operation-menu'
+import { css } from './utils'
 
 // import table node matchers
 import {
@@ -46,89 +47,89 @@ class BetterTable extends Module {
   constructor(quill, options) {
     super(quill, options);
 
+    this.hd_composed_paths = [];
+    this.hd_quill = quill;
+    this.hd_options = options;
+    this.hd_table_node = null;
+    this.hd_cell_node = null;
+    this.hd_row_node = null;
+
+    this.select_table = function(evt, use_move) {
+     // bugfix: evt.path is undefined in Safari, FF, Micro Edge
+     const path = getEventComposedPath(evt)
+
+     if (!path || path.length <= 0) return
+
+     const tableNode = path.filter(node => {
+       return node.tagName &&
+         node.tagName.toUpperCase() === 'TABLE' &&
+         node.classList.contains('quill-better-table')
+     })[0]
+
+     const rowNode = path.filter(node => {
+       return node.tagName &&
+         node.tagName.toUpperCase() === 'TR' &&
+         node.getAttribute('data-row')
+     })[0]
+ 
+     const cellNode = path.filter(node => {
+       return node.tagName &&
+         node.tagName.toUpperCase() === 'TD' &&
+         node.getAttribute('data-row')
+     })[0]
+
+     this.hd_table_node = tableNode;
+     this.hd_row_node = rowNode;
+     this.hd_cell_node = cellNode;
+     this.hd_composed_path = getEventComposedPath(evt);      
+
+     if (tableNode) {
+      this.showCurrentCell(tableNode, cellNode);
+      // current table clicked or hovered
+       if (this.table === tableNode) return
+       // other table clicked or hovered
+       if (this.table) this.hideTableTools()
+       this.showTableTools(tableNode, quill, options)
+     } else if (this.table) {
+       // other clicked or hovered
+       if (use_move) {
+          // if we are moving and not clicking and we're not far enough away from the table
+          // we don't want to hide the tools.
+          var clientRect = this.table.getBoundingClientRect();
+          var x = evt.clientX;
+          var y = evt.clientY;
+          var left = clientRect.left - 10;
+          var top = clientRect.top - 10; 
+          var right = clientRect.right + 10;
+          var bottom = clientRect.bottom + 10;
+          if (x >= left && x <= right && y >= top && y <= bottom) {
+            return;
+          }
+        }
+        this.hideTableTools();
+        this.showCurrentCell(this.table, null);
+     }
+    }.bind(this);
+
+    // handle move on quill-better-table
+    this.quill.root.addEventListener('mousemove', function(evt) {
+      this.select_table(evt, true); }.bind(this), false); 
+ 
     // handle click on quill-better-table
-    this.quill.root.addEventListener('click', (evt) => {
-      // bugfix: evt.path is undefined in Safari, FF, Micro Edge
-      const path = getEventComposedPath(evt)
-
-      if (!path || path.length <= 0) return
-
-      const tableNode = path.filter(node => {
-        return node.tagName &&
-          node.tagName.toUpperCase() === 'TABLE' &&
-          node.classList.contains('quill-better-table')
-      })[0]
-
-      if (tableNode) {
-        // current table clicked
-        if (this.table === tableNode) return
-        // other table clicked
-        if (this.table) this.hideTableTools()
-        this.showTableTools(tableNode, quill, options)
-      } else if (this.table) {
-        // other clicked
-        this.hideTableTools()
-      }
-    }, false)
-
+    this.quill.root.addEventListener('click', function(evt) {
+      this.select_table(evt, false); }.bind(this), false);
+ 
+    
     // handle right click on quill-better-table
-    this.quill.root.addEventListener('contextmenu', (evt) => {
-      if (!this.table) return true
-      evt.preventDefault()
+    if (!options.operationMenu.disabled) {
+      this.quill.root.addEventListener('contextmenu', (evt) => {
+        if (!this.table) return true
+        evt.preventDefault()
 
-      // bugfix: evt.path is undefined in Safari, FF, Micro Edge
-      const path = getEventComposedPath(evt)
-      if (!path || path.length <= 0) return
+        this.tableOperationMenu = this.condTableOperationMenu(evt);
 
-      const tableNode = path.filter(node => {
-        return node.tagName &&
-          node.tagName.toUpperCase() === 'TABLE' &&
-          node.classList.contains('quill-better-table')
-      })[0]
-
-      const rowNode = path.filter(node => {
-        return node.tagName &&
-          node.tagName.toUpperCase() === 'TR' &&
-          node.getAttribute('data-row')
-      })[0]
-
-      const cellNode = path.filter(node => {
-        return node.tagName &&
-          node.tagName.toUpperCase() === 'TD' &&
-          node.getAttribute('data-row')
-      })[0]
-
-      if (!tableNode || !rowNode || !cellNode) {
-        return;
-      }
-
-      let isTargetCellSelected = this.tableSelection.selectedTds
-        .map(tableCell => tableCell.domNode)
-        .includes(cellNode)
-
-      if (this.tableSelection.selectedTds.length <= 0 ||
-        !isTargetCellSelected) {
-        	if (cellNode !== undefined) {
-            this.tableSelection.setSelection(
-                cellNode.getBoundingClientRect(),
-                cellNode.getBoundingClientRect()
-            )
-        	}
-        }
-
-        if (this.tableOperationMenu)
-          this.tableOperationMenu = this.tableOperationMenu.destroy()
-
-        if (tableNode) {
-          this.tableOperationMenu = new TableOperationMenu({
-            table: tableNode,
-            row: rowNode,
-            cell: cellNode,
-            left: evt.pageX,
-            top: evt.pageY
-          }, quill, options.operationMenu)
-        }
-      }, false)
+        }, false)
+    }
 
     // add keyboard binding：Backspace
     // prevent user hits backspace to delete table cell
@@ -165,6 +166,75 @@ class BetterTable extends Module {
     quill.clipboard.matchers = quill.clipboard.matchers.filter(matcher => {
       return matcher[0] !== 'tr'
     })
+  }
+
+  condTableOperationMenu(evt, display = true, use_hd_composed = false) {
+    
+    // bugfix: evt.path is undefined in Safari, FF, Micro Edge
+    var path;
+
+    if (use_hd_composed) {
+      path = this.hd_composed_path;
+    } else {
+      path = getEventComposedPath(evt)
+    }
+    if (!path || path.length <= 0) return
+
+    const tableNode = path.filter(node => {
+      return node.tagName &&
+        node.tagName.toUpperCase() === 'TABLE' &&
+        node.classList.contains('quill-better-table')
+    })[0]
+
+    const rowNode = path.filter(node => {
+      return node.tagName &&
+        node.tagName.toUpperCase() === 'TR' &&
+        node.getAttribute('data-row')
+    })[0]
+
+    const cellNode = path.filter(node => {
+      return node.tagName &&
+        node.tagName.toUpperCase() === 'TD' &&
+        node.getAttribute('data-row')
+    })[0]
+
+    if (!tableNode || !rowNode || !cellNode) {
+      return;
+    }
+
+    let isTargetCellSelected = this.tableSelection.selectedTds
+      .map(tableCell => tableCell.domNode)
+      .includes(cellNode)
+
+    if (this.tableSelection.selectedTds.length <= 0 ||
+      !isTargetCellSelected) {
+        if (cellNode !== undefined) {
+          this.tableSelection.setSelection(
+              cellNode.getBoundingClientRect(),
+              cellNode.getBoundingClientRect()
+          )
+        }
+      }
+
+      var options = this.hd_options; 
+      var quill = this.hd_quill;
+
+      if (this.tableOperationMenu)
+        this.tableOperationMenu = this.tableOperationMenu.destroy()
+
+      if (tableNode) {
+        options.operationMenu.display = display;
+        var tableOperationMenu = new TableOperationMenu({
+          table: tableNode,
+          row: rowNode,
+          cell: cellNode,
+          left: evt.pageX,
+          top: evt.pageY
+        }, quill, options.operationMenu)
+        return tableOperationMenu;
+      }      
+
+      return null;
   }
 
   getTable(range = this.quill.getSelection()) {
@@ -217,6 +287,76 @@ class BetterTable extends Module {
     return retval;
   }
 
+  insertColumnLeft(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.insertColumnLeft();
+    }
+  }
+
+  insertColumnRight(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.insertColumnRight();
+    }
+  }
+
+  insertRowUp(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.insertRowUp();
+    }
+  }
+
+  insertRowDown(evt) { 
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.insertRowDown();
+    }
+  }
+
+  deleteColumn(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.deleteColumn();
+    }
+  }
+
+  deleteRow(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.deleteRow();
+    }
+  }
+
+  deleteTable(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.deleteTable();
+    }
+  }
+
+  mergeCells(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.mergeCells();
+    }
+  }
+
+  splitCell(evt) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.splitCell();
+    }
+  }
+
+  setBgColor(evt, color) {
+    var op_menu = this.condTableOperationMenu(evt, false, true);
+    if (op_menu) {
+      op_menu.setBgColor(color);
+    }
+  }
+
   insertTable(rows, columns) {
     const range = this.quill.getSelection(true)
     if (range == null) return
@@ -262,6 +402,27 @@ class BetterTable extends Module {
     this.tableOperationMenu = null
     this.table = null
   }
+
+  showCurrentCell (table, cell) {
+    
+    if (this.shown_cell) {
+      if (this.shown_cell !== cell) {
+        this.shown_cell.style['border'] = this.prev_border_style;
+      }
+    }
+
+    if (cell) {
+      if (this.shown_cell !== cell) {
+        this.prev_border_style = cell.style['border'];
+        cell.style['border'] = '1px solid #17b017';
+        this.shown_cell = cell;
+      } 
+    } else {
+      this.shown_cell = null;
+      this.prev_border_style = '';
+    }
+  }
+
 }
 
 BetterTable.keyboardBindings = {
